@@ -1,0 +1,2 @@
+# shai
+Shell AI Helper
