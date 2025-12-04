@@ -242,12 +242,15 @@ func runAgent(fullSystemPrompt string, userShell string) error {
 			}
 
 			command := content
-			if !confirmAction(fmt.Sprintf("✨ shai wants to run this command:\n\n  $ %s\n\nAllow?", command), reader) {
-				return fmt.Errorf("user rejected command, terminating")
+			status, output := "", ""
+			if confirmAction(fmt.Sprintf("✨ shai wants to run this command:\n\n  $ %s\n\nAllow?", command), reader) {
+				fmt.Printf("🚀 Running command via %s...\n", userShell)
+				status, output, _ = executeCommand(command, userShell)
+			} else {
+				fmt.Printf("🛑 Rejecting command.\n")
+				status, output = "REJECTED", "Command rejected by user."
 			}
 
-			fmt.Printf("🚀 Running command via %s...\n", userShell)
-			status, output, _ := executeCommand(command, userShell)
 
 			var feedback strings.Builder
 			feedback.WriteString("PREVIOUS_COMMAND_RESULT:\n")
