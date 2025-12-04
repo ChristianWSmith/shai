@@ -1,0 +1,5 @@
+INFO: Startup successful
+WARN: Disk space low
+ERROR: File not found in path /etc/config
+INFO: User logged in
+ERROR: Timeout exceeded for database query
