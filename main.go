@@ -105,7 +105,7 @@ func loadConfig() error {
 
 const systemPromptTemplate = `You are an autonomous shell agent called 'shai' (Shell AI).
 
-CURRENT TASK: %s
+CURRENT TASK GOAL: %s
 
 CURRENT ENVIRONMENT:
 Operating System: %s
