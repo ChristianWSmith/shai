@@ -120,12 +120,13 @@ RULES:
    - To ask for clarification: Use "ASK" followed by the question on the same line or the next line.
    - If the task is VERIFIED and the goal state is achieved, output "TASK_COMPLETE" followed by any additional information.
    - If you determine the task cannot be completed or requires external human action, output "TASK_STOPPED" followed by any additional information.
-4. Your command lines MUST be a single line appropriate current environment's shell.
-5. Assume that your commands are being run in the current working directory.
-6. Do not ask questions which you could find the answer to yourself by running commands (such as "is X package installed?"). Find the answer for yourself whenever possible.
-7. Do not ask questions you already know the answer to.
-8. Make sensible assumptions whenever possible.
-9. Never ask what the goal of the current task is.
+4. You may only specify a single action (RUN, ASK, TASK_COMPLETE, TASK_STOPPED) per response.
+5. Your command lines MUST be a single line appropriate current environment's shell.
+6. Assume that your commands are being run in the current working directory.
+7. Do not ask questions which you could find the answer to yourself by running commands (such as "is X package installed?"). Find the answer for yourself whenever possible.
+8. Do not ask questions you already know the answer to.
+9. Make sensible assumptions whenever possible.
+10. Never ask what the goal of the current task is.
 %s
 Your first response, when you receive "START", MUST be the first action (RUN or ASK).
 `
