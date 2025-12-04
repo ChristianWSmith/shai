@@ -366,6 +366,7 @@ func executeCommand(command string, shellPath string) (status string, output str
 	var outbuf bytes.Buffer
 	cmd.Stdout = &outbuf
 	cmd.Stderr = &outbuf
+	cmd.Env = os.Environ()
 
 	execErr := cmd.Run()
 
