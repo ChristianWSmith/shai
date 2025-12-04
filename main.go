@@ -10,17 +10,110 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 )
 
-// --- Configuration ---
-// CHANGED: Use the /api/chat endpoint for message history management.
-const ollamaURL = "http://localhost:11434/api/chat"
+// --- Configuration Structures and Logic ---
 
-// The model must be able to reason and output commands, e.g., codellama, mixtral, llama3.
-const ollamaModel = "llama3"
+// Config holds the application settings loaded from config.json.
+type Config struct {
+	OllamaURL   string `json:"ollama_url"`
+	OllamaModel string `json:"ollama_model"`
+}
+
+// Default configuration settings
+const defaultOllamaURL = "http://localhost:11434/api/chat"
+const defaultOllamaModel = "llama3"
+
+// Global variable to hold the loaded configuration
+var cfg Config
+
+// getConfigFilePath determines the cross-platform path for the config file.
+func getConfigFilePath() (string, error) {
+	var dir string
+	const appName = "shai"
+
+	switch runtime.GOOS {
+	case "windows":
+		dir = os.Getenv("APPDATA")
+	case "darwin": // macOS
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		dir = filepath.Join(home, "Library", "Application Support")
+	case "linux": // Linux and other Unix-like systems
+		dir = os.Getenv("XDG_CONFIG_HOME")
+		if dir == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return "", err
+			}
+			dir = filepath.Join(home, ".config")
+		}
+	default:
+		// Fallback for unknown systems
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		dir = filepath.Join(home, "."+appName)
+	}
+
+	// Ensure the application specific directory exists
+	appDir := filepath.Join(dir, appName)
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create config directory %s: %w", appDir, err)
+	}
+
+	return filepath.Join(appDir, "config.json"), nil
+}
+
+// loadConfig reads the configuration file or creates a default one.
+func loadConfig() error {
+	configPath, err := getConfigFilePath()
+	if err != nil {
+		return fmt.Errorf("failed to get config path: %w", err)
+	}
+
+	// Check if config file exists
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		// File does not exist, create default config
+		cfg = Config{
+			OllamaURL:   defaultOllamaURL,
+			OllamaModel: defaultOllamaModel,
+		}
+		fmt.Printf("⚠️ Configuration file not found. Creating default config at: %s\n", configPath)
+
+		data, err := json.MarshalIndent(cfg, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal default config: %w", err)
+		}
+
+		if err := os.WriteFile(configPath, data, 0644); err != nil {
+			return fmt.Errorf("failed to write default config: %w", err)
+		}
+
+		return nil
+	}
+
+	// File exists, load config
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config file %s: %w", configPath, err)
+	}
+
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return fmt.Errorf("failed to parse config file %s: %w", configPath, err)
+	}
+
+	return nil
+}
+
+// --- Agent Logic Constants and System Prompt ---
 
 // systemPromptTemplate is a template to be formatted with the user's task, OS, and shell.
 const systemPromptTemplate = `You are an autonomous shell agent called 'shai' (Shell AI).
@@ -78,6 +171,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Load configuration first
+	if err := loadConfig(); err != nil {
+		log.Fatalf("Fatal Error loading configuration: %v", err)
+	}
+
 	// 1. Get environment details for the system prompt
 	userShell := os.Getenv("SHELL")
 	// Clean up shell path on Windows or set sensible defaults
@@ -101,7 +199,8 @@ func main() {
 
 	fmt.Printf("👋 shai initialized with task: %s\n", initialTask)
 	fmt.Printf("Platform: %s | Shell: %s\n", currentOS, userShell)
-	fmt.Printf("Using Ollama model: %s\n", ollamaModel)
+	// CHANGED: Report loaded config values
+	fmt.Printf("Using Ollama URL: %s | Model: %s\n", cfg.OllamaURL, cfg.OllamaModel)
 
 	// 4. Run the agent, passing the detected shell for execution
 	err := runAgent(fullSystemPrompt, userShell)
@@ -251,7 +350,8 @@ func callOllama(messages []Message, systemInstruction string) (string, error) {
 	fullMessages = append(fullMessages, messages...)
 
 	reqBody := ChatRequest{
-		Model:     ollamaModel,
+		// CHANGED: Use configuration values
+		Model:     cfg.OllamaModel,
 		Messages:  fullMessages,
 		Stream:    false,
 		KeepAlive: "5m",
@@ -259,7 +359,8 @@ func callOllama(messages []Message, systemInstruction string) (string, error) {
 
 	jsonBody, _ := json.Marshal(reqBody)
 
-	req, err := http.NewRequest("POST", ollamaURL, bytes.NewBuffer(jsonBody))
+	// CHANGED: Use configuration URL
+	req, err := http.NewRequest("POST", cfg.OllamaURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -268,7 +369,7 @@ func callOllama(messages []Message, systemInstruction string) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to send request to Ollama: %w. Is Ollama running at %s?", err, ollamaURL)
+		return "", fmt.Errorf("failed to send request to Ollama: %w. Is Ollama running at %s?", err, cfg.OllamaURL)
 	}
 	defer resp.Body.Close()
 
