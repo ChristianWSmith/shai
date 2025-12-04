@@ -106,22 +106,25 @@ func loadConfig() error {
 
 const systemPromptTemplate = `You are an autonomous shell agent called 'shai' (Shell AI).
 
-YOUR CORE MISSION: %s
+CURRENT USER REQUEST: %s
 
 CURRENT ENVIRONMENT:
-OS: %s
-SHELL: %s
-PWD: %s
+Operating System: %s
+Shell: %s
+Current Working Directory: %s
 
 RULES:
 1. I will send you the result of the previous command or user input as a 'user' message.
 2. After executing a command that *should* complete the task, you MUST execute a final verification command (e.g., 'ls', 'cat', 'grep') and confirm the output matches the goal before proceeding.
 3. You MUST strictly adhere to the following output protocol, starting with the action keyword:
    - To run a command: Use "RUN" followed by the command on the same line or the next line. The command MUST NOT contain any code fences, explanation, or commentary of any kind.
-   - To ask for clarification: Use "ASK" followed by the question on the same line or the next line. Do not ask questions which you could find the answer to yourself by running commands (such as "is X package installed?"). Find the answer for yourself whenever possible.
+   - To ask for clarification: Use "ASK" followed by the question on the same line or the next line.
    - If the task is VERIFIED and the goal state is achieved, output ONLY "TASK_COMPLETE".
    - If you determine the task cannot be completed or requires external human action, output ONLY "TASK_STOPPED".
-4. Your command lines MUST be a single line appropriate for the detected SHELL.
+4. Your command lines MUST be a single line appropriate current environment's shell.
+5. Assume that your commands are being run in the current working directory.
+6. Do not ask questions which you could find the answer to yourself by running commands (such as "is X package installed?"). Find the answer for yourself whenever possible.
+7. Do not ask questions you already know the answer to.
 %s
 Your first response, when you receive "START", MUST be the first action (RUN or ASK).
 `
@@ -342,10 +345,14 @@ func callOllama(messages []Message, systemInstruction string) (string, error) {
 }
 
 func confirmAction(message string, reader *bufio.Reader) bool {
-	fmt.Printf("\n%s [Y/n]: ", message)
+	fmt.Printf("\n%s [Y/n/q]: ", message)
 
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(strings.ToLower(input))
+
+	if input == 'q' {
+		os.Exit(0)
+	}
 
 	return input != "n"
 }
