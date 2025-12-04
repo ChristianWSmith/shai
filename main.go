@@ -348,16 +348,16 @@ func callOllama(messages []Message, systemInstruction string) (string, error) {
 }
 
 func confirmAction(message string, reader *bufio.Reader) bool {
-	fmt.Printf("\n%s [Y/n/q]: ", message)
+	fmt.Printf("\n%s [ (Y)es / (n)o / (q)uit ]: ", message)
 
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(strings.ToLower(input))
 
-	if input == "q" {
+	if strings.HasPrefix(input, "q") {
 		os.Exit(0)
 	}
 
-	return input != "n"
+	return !strings.HasPrefix(input, "n")
 }
 
 func executeCommand(command string, shellPath string) (status string, output string, err error) {
@@ -371,20 +371,19 @@ func executeCommand(command string, shellPath string) (status string, output str
 		cmd = exec.Command("cmd.exe", "/C", command)
 	}
 
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	var outbuf bytes.Buffer
+	cmd.Stdout = &outbuf
+	cmd.Stderr = &outbuf
 
 	execErr := cmd.Run()
 
 	if execErr != nil {
-		status = "ERROR"
-		output = fmt.Sprintf("Command failed with error: %v\n%s", execErr, stderr.String())
-		return status, output, nil
+		status = fmt.Sprintf("ERROR (%v)", execErr)
+	} else {
+		status = "SUCCESS"
 	}
 
-	status = "SUCCESS"
-	output = fmt.Sprintf("STDOUT:\n%s\nSTDERR:\n%s", stdout.String(), stderr.String())
+	output = fmt.Sprintf("OUTPUT:\n%s", outbuf.String())
 
 	return status, output, nil
 }
