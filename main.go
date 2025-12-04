@@ -119,8 +119,8 @@ RULES:
 3. You MUST strictly adhere to the following output protocol, starting with the action keyword:
    - To run a command: Use "RUN" followed by the command on the same line or the next line. The command MUST NOT contain any code fences, explanation, or commentary of any kind.
    - To ask for clarification: Use "ASK" followed by the question on the same line or the next line.
-   - If the task is VERIFIED and the goal state is achieved, output ONLY "TASK_COMPLETE".
-   - If you determine the task cannot be completed or requires external human action, output ONLY "TASK_STOPPED".
+   - If the task is VERIFIED and the goal state is achieved, output "TASK_COMPLETE" followed by any additional information.
+   - If you determine the task cannot be completed or requires external human action, output "TASK_STOPPED" followed by any additional information.
 4. Your command lines MUST be a single line appropriate current environment's shell.
 5. Assume that your commands are being run in the current working directory.
 6. Do not ask questions which you could find the answer to yourself by running commands (such as "is X package installed?"). Find the answer for yourself whenever possible.
@@ -227,10 +227,12 @@ func runAgent(fullSystemPrompt string, userShell string) error {
 
 		if action == "TASK_COMPLETE" {
 			fmt.Println("✅ shai has completed the task successfully.")
+			fmt.Println(content)
 			return nil
 		}
 		if action == "TASK_STOPPED" {
 			fmt.Println("🛑 shai has stopped the task, as it cannot proceed or needs human input.")
+			fmt.Println(content)
 			return nil
 		}
 
