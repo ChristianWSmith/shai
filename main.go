@@ -23,7 +23,7 @@ type Config struct {
 }
 
 const defaultOllamaURL = "http://localhost:11434/api/chat"
-const defaultOllamaModel = "llama3"
+const defaultOllamaModel = "qwen3:8b"
 const defaultAdditionalContext = ""
 
 var cfg Config
