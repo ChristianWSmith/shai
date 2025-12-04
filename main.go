@@ -40,7 +40,7 @@ func getConfigFilePath() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		dir = filepath.Join(home, "Library", "Application Support")
+		dir = filepath.Join(home, ".config")
 	case "linux":
 		dir = os.Getenv("XDG_CONFIG_HOME")
 		if dir == "" {
