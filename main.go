@@ -384,6 +384,7 @@ func executeCommand(command string, shellPath string) (status string, output str
 	}
 
 	output = fmt.Sprintf("OUTPUT:\n%s", outbuf.String())
+	fmt.Println(outbuf.String())
 
 	return status, output, nil
 }
