@@ -78,7 +78,6 @@ func loadConfig() error {
 			OllamaModel: defaultOllamaModel,
 			AdditionalContext: defaultAdditionalContext,
 		}
-		fmt.Printf("⚠️ Configuration file not found. Creating default config at: %s\n", configPath)
 
 		data, err := json.MarshalIndent(cfg, "", "  ")
 		if err != nil {
@@ -125,7 +124,6 @@ RULES:
 5. Assume that your commands are being run in the current working directory.
 6. Do not ask questions which you could find the answer to yourself by running commands (such as "is X package installed?"). Find the answer for yourself whenever possible.
 7. Do not ask questions you already know the answer to.
-8. If the task demands output, include that information with your "TASK_COMPLETE" message once complete.
 %s
 Your first response, when you receive "START", MUST be the first action (RUN or ASK).
 `
@@ -182,10 +180,6 @@ func main() {
 
 	fullSystemPrompt := generateSystemPrompt(initialTask, currentOS, userShell)
 
-	fmt.Printf("👋 shai initialized with task: %s\n", initialTask)
-	fmt.Printf("Platform: %s | Shell: %s\n", currentOS, userShell)
-	fmt.Printf("Using Ollama URL: %s | Model: %s\n", cfg.OllamaURL, cfg.OllamaModel)
-
 	err := runAgent(fullSystemPrompt, userShell)
 	if err != nil {
 		log.Fatalf("Agent error: %v", err)
@@ -196,11 +190,9 @@ func runAgent(fullSystemPrompt string, userShell string) error {
 	messages := []Message{
 		{Role: "user", Content: "START"},
 	}
-	step := 1
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Printf("\n--- Step %d ---\n", step)
 
 		fmt.Println("🤔 shai is thinking...")
 		response, err := callOllama(messages, fullSystemPrompt)
@@ -244,7 +236,6 @@ func runAgent(fullSystemPrompt string, userShell string) error {
 					Role:    "user",
 					Content: fmt.Sprintf("CRITICAL ERROR: Previous response was RUN but provided no command. Full response was:\n%s", modelOutput),
 				})
-				step++
 				continue
 			}
 
@@ -271,12 +262,10 @@ func runAgent(fullSystemPrompt string, userShell string) error {
 		} else if action == "ASK" {
 			if content == "" {
 				fmt.Printf("⚠️ shai provided a malformed ASK request (missing question). Response:\n---\n%s\n---\n", modelOutput)
-				// Feedback for the model
 				messages = append(messages, Message{
 					Role:    "user",
 					Content: fmt.Sprintf("CRITICAL ERROR: Previous response was ASK but provided no question. Full response was:\n%s", modelOutput),
 				})
-				step++
 				continue
 			}
 
@@ -301,8 +290,6 @@ func runAgent(fullSystemPrompt string, userShell string) error {
 				Content: fmt.Sprintf("UNPARSEABLE_RESPONSE_ERROR: Your previous response did not follow the protocol. Your previous output was:\n%s", modelOutput),
 			})
 		}
-
-		step++
 	}
 }
 
