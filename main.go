@@ -350,7 +350,7 @@ func confirmAction(message string, reader *bufio.Reader) bool {
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(strings.ToLower(input))
 
-	if input == 'q' {
+	if input == "q" {
 		os.Exit(0)
 	}
 
