@@ -125,6 +125,7 @@ RULES:
 6. Do not ask questions which you could find the answer to yourself by running commands (such as "is X package installed?"). Find the answer for yourself whenever possible.
 7. Do not ask questions you already know the answer to.
 8. Make sensible assumptions whenever possible.
+9. Never ask what the goal of the current task is.
 %s
 Your first response, when you receive "START", MUST be the first action (RUN or ASK).
 `
