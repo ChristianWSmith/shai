@@ -17,8 +17,8 @@ import (
 )
 
 type Config struct {
-	OllamaURL   string `json:"ollama_url"`
-	OllamaModel string `json:"ollama_model"`
+	OllamaURL         string `json:"ollama_url"`
+	OllamaModel       string `json:"ollama_model"`
 	AdditionalContext string `json:"additional_context"`
 }
 
@@ -74,8 +74,8 @@ func loadConfig() error {
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		cfg = Config{
-			OllamaURL:   defaultOllamaURL,
-			OllamaModel: defaultOllamaModel,
+			OllamaURL:         defaultOllamaURL,
+			OllamaModel:       defaultOllamaModel,
 			AdditionalContext: defaultAdditionalContext,
 		}
 
@@ -153,7 +153,6 @@ type ChatResponse struct {
 	Message   Message   `json:"message"`
 	Done      bool      `json:"done"`
 }
-
 
 func main() {
 	if len(os.Args) < 2 {
@@ -245,12 +244,11 @@ func runAgent(fullSystemPrompt string, userShell string) error {
 			status, output := "", ""
 			if confirmAction(fmt.Sprintf("✨ shai wants to run this command:\n\n  $ %s\n\nAllow?", command), reader) {
 				fmt.Printf("🚀 Running command via %s...\n", userShell)
-				status, output, _ = executeCommand(command, userShell)
+				status, output = executeCommand(command, userShell)
 			} else {
 				fmt.Printf("🛑 Rejecting command.\n")
 				status, output = "REJECTED", "Command rejected by user."
 			}
-
 
 			var feedback strings.Builder
 			feedback.WriteString("PREVIOUS_COMMAND_RESULT:\n")
@@ -352,7 +350,7 @@ func confirmAction(message string, reader *bufio.Reader) bool {
 	return !strings.HasPrefix(input, "n")
 }
 
-func executeCommand(command string, shellPath string) (status string, output string, err error) {
+func executeCommand(command string, shellPath string) (status string, output string) {
 	var cmd *exec.Cmd
 
 	if runtime.GOOS != "windows" {
@@ -364,22 +362,42 @@ func executeCommand(command string, shellPath string) (status string, output str
 	}
 
 	var outbuf bytes.Buffer
-	cmd.Stdout = &outbuf
-	cmd.Stderr = &outbuf
-	cmd.Env = os.Environ()
 
-	execErr := cmd.Run()
+	stdoutPipe, pipeErr := cmd.StdoutPipe()
+	if pipeErr != nil {
+		return "ERROR", fmt.Sprintf("Failed to create stdout pipe: %v", pipeErr)
+	}
+	stderrPipe, pipeErr := cmd.StderrPipe()
+	if pipeErr != nil {
+		return "ERROR", fmt.Sprintf("Failed to create stderr pipe: %v", pipeErr)
+	}
+
+	if startErr := cmd.Start(); startErr != nil {
+		return "ERROR", fmt.Sprintf("Failed to start command: %v", startErr)
+	}
+
+	go func() {
+		defer stdoutPipe.Close()
+		multiWriter := io.MultiWriter(os.Stdout, &outbuf)
+		io.Copy(multiWriter, stdoutPipe)
+	}()
+
+	go func() {
+		defer stderrPipe.Close()
+		multiWriter := io.MultiWriter(os.Stderr, &outbuf)
+		io.Copy(multiWriter, stderrPipe)
+	}()
+
+	execErr := cmd.Wait()
 
 	if execErr != nil {
-		status = fmt.Sprintf("ERROR (%v)", execErr)
+		status = fmt.Sprintf("ERROR(%v)", execErr)
 	} else {
 		status = "SUCCESS"
 	}
-
 	output = fmt.Sprintf("OUTPUT:\n%s", outbuf.String())
-	fmt.Println(outbuf.String())
 
-	return status, output, nil
+	return status, output
 }
 
 func getwd() string {
@@ -394,6 +412,6 @@ func generateSystemPrompt(initialTask string, currentOS string, userShell string
 	if cfg.AdditionalContext == "" {
 		return fmt.Sprintf(systemPromptTemplate, initialTask, currentOS, userShell, getwd(), "")
 	} else {
-		return fmt.Sprintf(systemPromptTemplate, initialTask, currentOS, userShell, getwd(), fmt.Sprintf(additionalContextTemplate, cfg.AdditionalContext))	
+		return fmt.Sprintf(systemPromptTemplate, initialTask, currentOS, userShell, getwd(), fmt.Sprintf(additionalContextTemplate, cfg.AdditionalContext))
 	}
 }
